@@ -1,0 +1,83 @@
+
+https://www.c3d2.de/wiki/SWD-LINK
+
+SWD-LINK 1.0.1
+==============
+
+SWD-LINK is an implementation of ARM's "Serial Wire Debugging" (SWD) protocol with an AVR ATMEGA8. 
+
+SWD needs only 2 wires (clock and data) and gives you full read/write access to all registers and memories and peripherals of an ARM Cortex M microcontroller.
+
+Low-level bitbanging is performed by an AVR ATMEGA8, which acts as a postman for SWD-packets.  The AVR receives the packets (header plus data) from the PC and passes them on via SWD data line to an ARM Cortex M microcontroller. The AVR will then read the response (ACK plus data) from the target and pass it back to the PC.
+
+A sample Java application is provided which will flash the 4 user LED's on an STM32F4-Discovery board in a SWD debugging session. The Cortex M4 is then reset by writing the address of the reset handler into register 15 (which is the program counter).
+
+The source code for SWD adapter and Java application are basically a hands-on introduction into SWD-packet-programming.  
+
+With SWD-LINK it is easy to experiment with SWD as you have full control over the packet traffic to/from the target Cortex M. 
+
+Thanks to Seb and John from Dresden hackerspace C3D2.de for the introduction into STM32F4 development, which made this project possible.
+
+Gerhard Paulus
+
+
+---------------------------------------------------
+
+Hardware setup:
+AVR MEGA8 with VDD +5 Volt (testet on STK500)
+(NO external pull-ups on SWD lines) 
+STM32F4-Discovery (powered by USB)
+SWD clock line: AVR PB0 to STM32F4 PA14 (SWDCLK)
+SWD data  line: AVR PB1 to STM32F4 PA13 (SWDDIO)
+connect common GND 
+PC connected to AVR via UART (on STK500):
+RXD on PD0
+TXD on PD1
+
+The zip-archive contains 5 files:
+read.me     : guide
+swd-avr.asm : AVR assembler source of SWD adapter
+swd-avr.hex : Intel-Hex of swd-avr.asm
+IO.java     : Java sample code using the SWD adapter
+IO.class    : byte code of IO.java
+
+zip  swd-link-1.0.zip read.me swd-avr.asm swd-avr.hex IO.java IO.class
+
+swd-avr.asm is written in AVR Assembler for processor ATMEGA8 and 16 MHz quartz. 
+If you use another processor and/or oscillator adapt the lines at the beginning of the code and assemble with AVRASM.
+
+IO.java can be compiled with any Java version.
+It uses the RXTX-library for RS232-communication
+(http://rxtx.qbang.org/wiki/index.php/Main_Page)
+Call with  
+java  IO  <portName> <baudRate>
+(defaults are:  /dev/ttyS1  38400)
+
+The effect will be that the 4 LED's on the STM32F4-Discovery blink a few times and then the Cortex M4 resets.
+
+Limitation:
+The adapter does not support sticky overrun detection
+(LSB in debug port CTRL/STAT must be 0)
+sticky overrun has a data phase even if ACK is not OK, and this is something the driver cannot handle.
+
+Adapter details:
+If the ACK is WAIT (previous transaction not yet finished) the adapter will resend the current packet on its own. WAIT response is never returned to PC.
+
+Commands are identified with MSB of header byte (1 for SWD packets, 0 for commands). Command 1 (START) will send initiating bit sequence and also read Debug Port register IDCODE (necessary to activate the Debug Port).
+
+Documentation:
+SWD and the complete Cortex M on-chip-debugging infrastructure is fully documented by ARM. Some of these documents need registration (no costs).
+
+ARM Debug Interface version 5 (ADIv5)
+(http://infocenter.arm.com/help/topic/com.arm.doc.prdc008772b/index.html)
+
+This document contains information specific to SWD clock timings:
+http://infocenter.arm.com/help/index.jsp?topic=/com.arm.doc.dui0499f/BEHCBIJE.html
+
+Debug support registers in the Cortex M4 core are described in the ARM Architecture Reference Manual (ARM ARM)
+http://infocenter.arm.com/help/index.jsp?topic=/com.arm.doc.ddi0403c/index.html
+
+You can find a very good introduction into SWD at
+http://lpcware.com/content/blog/introduction-cortex-serial-wire-debugging-part-one
+
+   
